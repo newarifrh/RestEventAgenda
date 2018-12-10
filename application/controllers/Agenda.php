@@ -26,6 +26,7 @@ class Agenda extends REST_Controller {
         // Construct the parent class
         parent::__construct();
         $this->load->model('agenda_model');
+        
 
 
         // Configure limits on our controller methods
@@ -33,6 +34,25 @@ class Agenda extends REST_Controller {
         $this->methods['users_get']['limit'] = 500; // 500 requests per hour per user/key
         $this->methods['users_post']['limit'] = 100; // 100 requests per hour per user/key
         $this->methods['users_delete']['limit'] = 50; // 50 requests per hour per user/key
+    }
+
+    public function process_post(){
+        $name = $this->post('name');
+        $email = $this->post('email');
+
+        $this->response([
+            'status' => $name,
+            'message' => $email
+        ]); 
+    }
+
+    public function QnA_get(){
+        $id = $this->get('id');
+        $nim = $this->get('nim');
+
+        $data = $this->agenda_model->getQnA($id, $nim);
+
+        $this->response($data);
     }
 
     public function event_get(){
@@ -51,78 +71,158 @@ class Agenda extends REST_Controller {
         }
         
         $this->response($data);
-
     }
 
-    public function user_get(){
-        $nim = $this->get('nim');
+    public function sendImg_POST(){
+        $img = $this->post('img');
+        if($img == ""){
+         $this->response([
+            [
+                'status' => 'false',
+                'message' => "fail upload image"
+            ]    
+        ]); 
+     } else{
+        $id = $this->agenda_model->getJumlahEvent();
+        $digits = 9;
+        $id = str_pad(rand(0, pow(10, $digits)-1), $digits, '0', STR_PAD_LEFT)."_".str_pad(rand(0, pow(10, $digits)-1), $digits, '0', STR_PAD_LEFT);
+        $path = "assets/img/" . $id . ".png";
+        file_put_contents($path,base64_decode($img));
+
+        $this->response([
+            [
+                'status' => 'true',
+                'message' => $id
+            ]    
+        ]); 
+    }
+}
+
+public function user_get(){
+    $nim = $this->get('nim');
+    $data = $this->agenda_model->getUser($nim);
+
+
+    $this->response($data);
+}
+
+public function login_post(){
+    $nim = $this->post('nim');
+    $password = $this->post('password');
+
+
+
+    $verification = $this->agenda_model->verification($nim, $password);
+
+
+
+    if($verification == 1){
+
         $data = $this->agenda_model->getUser($nim);
-        
-        
+
+
         $this->response($data);
-    }
-
-    public function login_get(){
-        $nim = $this->get('nim');
-        $password = $this->get('password');
-
-        $verification = $this->agenda_model->verification($nim, $password);
 
 
-
-        if($verification == 1){
-            $this->response($nim, REST_Controller::HTTP_OK);
-
-        } else {
-            $this->response([
-                'status' => FALSE,
+    } else {
+        $this->response([
+            [
+                'status' => 'FALSE',
                 'message' => 'No user were found'
-            ], REST_Controller::HTTP_NOT_FOUND); 
-
-        }
+            ]    
+        ]); 
 
     }
+}
 
-    public function eventku_get(){
+public function manageEvent_get(){
+    $nim = $this->get('nim');
+    $data = $this->agenda_model->getEvent_by_nim($nim);
+    $this->response($data);
+}
+
+public function listUserJoinEvent_get(){
+    $idEvent = $this ->get('idEvent');
+    $data = $this->agenda_model->getUser_by_idEvent($idEvent);
+    $this->response($data);
+}
+
+public function eventku_get(){
 
 
-        $nim = $this->get('nim');
+    $nim = $this->get('nim');
 
-        if($nim != ''){
-            $data = $this->agenda_model->getEventku($nim);
-        } else {
+    if($nim != ''){
+        $data = $this->agenda_model->getEventku($nim);
+    } else {
                 // Set the response and exit
-            $this->response([
-                'status' => FALSE,
-                'message' => 'No event were found'
+        $this->response([
+            'status' => FALSE,
+            'message' => 'No event were found'
                 ], REST_Controller::HTTP_NOT_FOUND); // NOT_FOUND (404) being the HTTP response code
-        }
-        
-        $this->response($data);
-
     }
 
-    public function register_post(){
-       $nim = $this->post('nim');
-       $id =  $this->post('id');
+    $this->response($data);
+}
 
-       if($nim != '' && $id != ''){
 
-        $result = $this->agenda_model->registerEvent($nim, $id);
-    } else {
-        $result = FALSE;
+public function register_post(){
+    $nim = $this->post('nim');
+    $idPertanyaan =  $this->post('id');
+
+    $test = $this->agenda_model->registerEvent($nim, $idPertanyaan);
+
+    if($test){
+        $this->response([[
+
+           'status' => TRUE,
+           'message' => 'Success'
+       ]
+   ]);
+    }else{
+        echo "gagal blog";
     }
+}
 
+public function row_get(){
+    echo $this->agenda_model->getJumlahJawaban();
+}
 
-    if($result){
-        echo 'berhasil';
-    } else {
-        echo 'ggl';
+public function addPertanyaan_post(){
+    $idEvent = $this->post('idEvent');
+    $pertanyaan =  $this->post('pertanyaan');
+    $this->agenda_model->tambahPertanyaan($idEvent, $pertanyaan );
+
+    $this->response([[
+       'status' => TRUE,
+       'message' => 'Success'
+   ] 
+]);
+    
+}
+
+public function addJawaban_post(){
+    $idPertanyaan = $this->post('idPertanyaan');
+    $nim =  $this->post('nim');
+    $jawaban =  $this->post('jawaban');
+
+    $row = $this->agenda_model->getJumlahJawaban();
+
+    $testing = $this->agenda_model->tambahJawaban($idPertanyaan, $nim, $jawaban );
+    if($testing){
+        $this->response([[
+
+           'status' => TRUE,
+           'message' => 'Success'
+       ]
+   ]);
+    }else{
+        echo "GAGAL INI";
     }
 }
 
 public function event_post(){
-    $id =  $this->input->post('id');
+
     $nama = $this->input->post('nama');
     $cp = $this->input->post('cp');
     $tanggalMulai = $this->post('tanggalMulai');
@@ -133,17 +233,24 @@ public function event_post(){
     $gambar = $this->post('gambar');
 
 
+    $row = $this->agenda_model->getJumlahEvent();
 
+    if ($row < 9){
+        $row = $row + 1;
+        $id = "E00" . $row;
+    } else if ($row < 99){
+        $row = $row + 1;
+        $id = "E0" . $row;
+    } else if ($row < 999){
+        $row = $row + 1;
+        $id = "E" . $row;
+    } 
 
-    $result = $this->agenda_model->tambahEvent($id, $nama, $tanggalMulai, $jamMulai, $tanggalSelesai, $lokasi, $deskripsi, $cp, $gambar);
-    
+    $gambar = "/ppk/assets/img/" . $gambar . ".png";
 
+    $this->agenda_model->tambahEvent($id, $nama, $tanggalMulai, $jamMulai, $tanggalSelesai, $lokasi, $deskripsi, $cp, $gambar);
 
-    if($result){
-        echo "brhsl";
-    } else {
-        echo "ggl";
-    }
+    $this->response($id);
 }
 
 public function search_get(){
@@ -152,7 +259,6 @@ public function search_get(){
     $data =  $this->agenda_model->search($search);
 
     $this->response($data);
-
 }
 
 public function changepass_post(){
@@ -161,120 +267,53 @@ public function changepass_post(){
     $pwb = $this->post('newpw');
 
     $data = $this->agenda_model->gantipw($nim, $pwl, $pwb);
-    if($data){
-        echo "berhasil";
+
+
+
+    if($data == "true"){
+        $this->response([[
+           'status' => TRUE,
+           'message' => 'Success'
+       ] 
+   ]);
+    } else{
+        $this->response([[
+
+            'status' => FALSE,
+            'message' => 'Failed'
+        ]
+    ]);
     }
+}
+
+public function changeinformasi_post(){
+    $nim = $this->post('nim');
+    $nohp1 = $this->post('nohp1');
+    $nohp2 = $this->post('nohp2');
+    $nohp3 = $this->post('nohp3');
+
+    $data = $this->agenda_model->gantihp($nim, $nohp1, $nohp2, $nohp3);
+    if($data){
+        $this->response([[
+
+           'status' => TRUE,
+           'message' => 'Success'
+       ]
+   ]);
+
+    }else{
+        $this->response([
+            [
+                'status' => FALSE,
+                'message' => 'Failed'
+            ]      
+        ]); 
+
+    }        
+
 
 }
 
 
-
-
-
-
-
-public function users_get()
-{
-        // Users from a data store e.g. database
-    $users = [
-        ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'fact' => 'Loves coding'],
-        ['id' => 2, 'name' => 'Jim', 'email' => 'jim@example.com', 'fact' => 'Developed on CodeIgniter'],
-        ['id' => 3, 'name' => 'Jane', 'email' => 'jane@example.com', 'fact' => 'Lives in the USA', ['hobbies' => ['guitar', 'cycling']]],
-    ];
-
-    $id = $this->get('id');
-
-        // If the id parameter doesn't exist return all the users
-
-    if ($id === NULL)
-    {
-            // Check if the users data store contains users (in case the database result returns NULL)
-        if ($users)
-        {
-                // Set the response and exit
-                $this->response($users, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
-            }
-            else
-            {
-                // Set the response and exit
-                $this->response([
-                    'status' => FALSE,
-                    'message' => 'No users were found'
-                ], REST_Controller::HTTP_NOT_FOUND); // NOT_FOUND (404) being the HTTP response code
-            }
-        }
-
-        // Find and return a single record for a particular user.
-
-        $id = (int) $id;
-
-        // Validate the id.
-        if ($id <= 0)
-        {
-            // Invalid id, set the response and exit.
-            $this->response(NULL, REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
-        }
-
-        // Get the user from the array, using the id as key for retrieval.
-        // Usually a model is to be used for this.
-
-        $user = NULL;
-
-        if (!empty($users))
-        {
-            foreach ($users as $key => $value)
-            {
-                if (isset($value['id']) && $value['id'] === $id)
-                {
-                    $user = $value;
-                }
-            }
-        }
-
-        if (!empty($user))
-        {
-            $this->set_response($user, REST_Controller::HTTP_OK); // OK (200) being the HTTP response code
-        }
-        else
-        {
-            $this->set_response([
-                'status' => FALSE,
-                'message' => 'User could not be found'
-            ], REST_Controller::HTTP_NOT_FOUND); // NOT_FOUND (404) being the HTTP response code
-        }
-    }
-
-    public function users_post()
-    {
-        // $this->some_model->update_user( ... );
-        $message = [
-            'id' => 100, // Automatically generated by the model
-            'name' => $this->post('name'),
-            'email' => $this->post('email'),
-            'message' => 'Added a resource'
-        ];
-
-        $this->set_response($message, REST_Controller::HTTP_CREATED); // CREATED (201) being the HTTP response code
-    }
-
-    public function users_delete()
-    {
-        $id = (int) $this->get('id');
-
-        // Validate the id.
-        if ($id <= 0)
-        {
-            // Set the response and exit
-            $this->response(NULL, REST_Controller::HTTP_BAD_REQUEST); // BAD_REQUEST (400) being the HTTP response code
-        }
-
-        // $this->some_model->delete_something($id);
-        $message = [
-            'id' => $id,
-            'message' => 'Deleted the resource'
-        ];
-
-        $this->set_response($message, REST_Controller::HTTP_NO_CONTENT); // NO_CONTENT (204) being the HTTP response code
-    }
 
 }
